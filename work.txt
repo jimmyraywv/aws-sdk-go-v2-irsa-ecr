@@ -1,0 +1,8 @@
+go mod tidy
+
+go build -o main .
+
+# Alpine
+kubectl exec --stdin --tty <POD> -- /bin/ash
+
+

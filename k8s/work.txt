@@ -1,0 +1,7 @@
+eksctl create iamserviceaccount \
+    --name irsa-test \
+    --namespace irsa-test \
+    --cluster <CLUSTER_NAME> \
+    --attach-policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly \
+    --approve \
+    --override-existing-serviceaccounts

@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: irsa-test
+  namespace: irsa-test
+  labels:
+    app: irsa-test
+spec:
+  selector:
+    matchLabels:
+      app: irsa-test
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 5
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: irsa-test
+    spec: 
+      serviceAccount: irsa-test
+      serviceAccountName: irsa-test
+      containers:
+      - name: test
+        image: <IMAGE>
+        imagePullPolicy: IfNotPresent
+        securityContext:  
+          allowPrivilegeEscalation: false  
+          runAsUser: 1000  
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          capabilities:
+            drop: ["ALL"]  
+          seccompProfile:
+            type: "RuntimeDefault"
+        # ports:
+        # - containerPort: 8080
+        env:
+        - name: ECR_ACCOUNT_ID
+          value: "<AWS_REMOTE_ACCOUNT_ID>"
+        - name: ECR_REGION
+          value: <AWS_REGION>
+        - name: ECR_REPO
+          value: <ECR_REPO>
+        resources:  
+          limits:  
+            cpu: 200m  
+            memory: 20Mi  
+          requests:  
+            cpu: 100m  
+            memory: 10Mi  
+        # readinessProbe:
+        #   tcpSocket:
+        #     port: 8080
+        #   initialDelaySeconds: 5
+        #   periodSeconds: 10
+        # livenessProbe:
+        #   tcpSocket:
+        #     port: 8080
+        #   initialDelaySeconds: 15
+        #   periodSeconds: 20
+        volumeMounts:
+          - mountPath: /tmp
+            name: tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}
+
