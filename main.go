@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -17,8 +20,17 @@ import (
 )
 
 const (
-	SESSION = "IRSA_CREDS_SESSION"
+	LocalTimeZoneInfo = "America/New_York"
+	SESSION           = "IRSA_CREDS_SESSION"
 )
+
+func locTime(name string, utcTime time.Time) time.Time {
+	loc, err := time.LoadLocation(name)
+	if err != nil {
+		panic(err)
+	}
+	return utcTime.In(loc)
+}
 
 func runEcrOps() {
 	ecrRepo := os.Getenv("ECR_REPO")
@@ -42,11 +54,17 @@ func runEcrOps() {
 	ecrRegion := os.Getenv("ECR_REGION")
 	fmt.Println("ECR Region: ", ecrRegion)
 
+	podName := os.Getenv("POD_NAME")
+	fmt.Println("Pod name: ", podName)
+
 	if region == "" || roleArn == "" || tokenFilePath == "" {
 		panic("failed to load ENV")
 	}
 
-	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region))
+	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region),
+		config.WithWebIdentityRoleCredentialOptions(func(options *stscreds.WebIdentityRoleOptions) {
+			options.RoleSessionName = SESSION + "@" + podName
+		}))
 	if err != nil {
 		panic("failed to load config, " + err.Error())
 	}
@@ -127,6 +145,27 @@ func runEcrOps() {
 			fmt.Println("Tag: ", *img.ImageTag)
 		}
 	}
+
+	//ECR Auth Token
+	tokenOutput, err := ecrClient.GetAuthorizationToken(context.TODO(), nil)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	ecrAuthToken := tokenOutput.AuthorizationData[0]
+
+	fmt.Println("ECR Auth Token: ", *ecrAuthToken.AuthorizationToken)
+	rawDecodedText, err := base64.StdEncoding.DecodeString(*ecrAuthToken.AuthorizationToken)
+	if err != nil {
+		panic(err)
+	}
+	decodedAuthToken := string(rawDecodedText)
+	fmt.Println("Decoded Auth Token: ", decodedAuthToken)
+	ecrAuthCredentials := strings.Split(decodedAuthToken, ":")
+	fmt.Printf("ECR Credentials: username=%s, password=%s\n", ecrAuthCredentials[0], ecrAuthCredentials[1])
+	fmt.Println("ECR Auth Expiry: ", locTime(LocalTimeZoneInfo, *ecrAuthToken.ExpiresAt))
+	fmt.Println("ECR Proxy Endpoint: ", *ecrAuthToken.ProxyEndpoint)
 }
 
 // Example from https://github.com/golang-jwt/jwt

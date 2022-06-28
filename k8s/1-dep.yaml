@@ -38,6 +38,10 @@ spec:
         # ports:
         # - containerPort: 8080
         env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
         - name: ECR_ACCOUNT_ID
           value: "<AWS_REMOTE_ACCOUNT_ID>"
         - name: ECR_REGION
