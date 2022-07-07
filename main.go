@@ -60,8 +60,10 @@ func runEcrOps() {
 	if region == "" || roleArn == "" || tokenFilePath == "" {
 		panic("failed to load ENV")
 	}
+	
+	ctx := context.Background()
 
-	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region),
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region),
 		config.WithWebIdentityRoleCredentialOptions(func(options *stscreds.WebIdentityRoleOptions) {
 			options.RoleSessionName = SESSION + "@" + podName
 		}))
@@ -79,7 +81,7 @@ func runEcrOps() {
 			o.RoleSessionName = SESSION
 		}))
 
-	creds, err := credsCache.Retrieve(context.TODO())
+	creds, err := credsCache.Retrieve(ctx)
 	if err != nil {
 		fmt.Printf("error retrieving creds, %v", err)
 		return
@@ -103,7 +105,7 @@ func runEcrOps() {
 		RepositoryName: aws.String(ecrRepo),
 	}
 
-	resp, err := ecrClient.ListImages(context.TODO(), input)
+	resp, err := ecrClient.ListImages(ctx, input)
 	if err != nil {
 		// handle this
 		log.Fatal(err)
@@ -121,7 +123,7 @@ func runEcrOps() {
 	}
 
 	// Remote ECR Ops
-	result, err := ecrClient.ListImages(context.TODO(), &ecr.ListImagesInput{
+	result, err := ecrClient.ListImages(ctx, &ecr.ListImagesInput{
 		RepositoryName: aws.String(ecrRepo),
 		Filter:         nil,
 		MaxResults:     nil,
@@ -147,7 +149,7 @@ func runEcrOps() {
 	}
 
 	//ECR Auth Token
-	tokenOutput, err := ecrClient.GetAuthorizationToken(context.TODO(), nil)
+	tokenOutput, err := ecrClient.GetAuthorizationToken(ctx, nil)
 	if err != nil {
 		log.Fatal(err)
 		return
