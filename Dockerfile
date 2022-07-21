@@ -6,6 +6,8 @@ COPY go.sum .
 # Disable default GOPROXY
 RUN go env -w GOPROXY=direct
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o main.bin .
+# Defang
+RUN chmod -t,a-s main.bin
 
 #FROM scratch
 FROM alpine:3.16.0
